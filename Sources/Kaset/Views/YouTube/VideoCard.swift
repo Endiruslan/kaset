@@ -52,6 +52,12 @@ struct VideoCard: View {
         if let metaText = self.metaText {
             parts.append(metaText)
         }
+        if let percent = self.video.watchedPercent {
+            parts.append(String(
+                localized: "Watched \(percent)%",
+                comment: "Accessibility label for a partially-watched video card"
+            ))
+        }
         return parts.joined(separator: ", ")
     }
 }
@@ -80,10 +86,38 @@ struct VideoThumbnailView: View {
                 }
         }
         .aspectRatio(16 / 9, contentMode: .fit)
+        .overlay(alignment: .bottom) {
+            if let percent = self.video.watchedPercent {
+                self.watchedProgressBar(percent: percent)
+            }
+        }
         .clipShape(.rect(cornerRadius: 8))
         .overlay(alignment: .bottomTrailing) {
             self.badge
         }
+    }
+
+    /// Thin red resume-progress bar pinned flush to the thumbnail's bottom edge.
+    /// Clipped by the parent's rounded corners. Exposed as its own labeled
+    /// accessibility element so consumers that combine children (the related
+    /// rail and list rows) announce the watched percent; `VideoCard` overrides
+    /// this with its own curated label, which already includes it.
+    @ViewBuilder
+    private func watchedProgressBar(percent: Int) -> some View {
+        let fraction = CGFloat(min(max(percent, 0), 100)) / 100
+        ZStack(alignment: .leading) {
+            Rectangle()
+                .fill(.white.opacity(0.3))
+            Rectangle()
+                .fill(.red)
+                .scaleEffect(x: fraction, anchor: .leading)
+        }
+        .frame(height: 3)
+        .accessibilityElement()
+        .accessibilityLabel(Text(
+            "Watched \(percent)%",
+            comment: "Accessibility label describing how much of a video has been watched"
+        ))
     }
 
     @ViewBuilder
@@ -116,7 +150,8 @@ struct VideoThumbnailView: View {
             channelName: "Apple Developer",
             lengthText: "28:01",
             viewCountText: "29K views",
-            publishedText: "1 year ago"
+            publishedText: "1 year ago",
+            watchedPercent: 65
         )
     )
     .frame(width: 320)
