@@ -53,6 +53,19 @@ final class MockYouTubeClient: YouTubeClientProtocol {
         return self.homeFeed
     }
 
+    func getHomeBundle() async throws -> YouTubeHomeBundle {
+        if let error { throw error }
+        // One call stands in for the single coalesced fetch: count it like a
+        // home-feed fetch so call-count assertions read naturally, and assemble
+        // the bundle from the same fixtures the individual getters use.
+        self.homeFeedCallCount += 1
+        return YouTubeHomeBundle(
+            feed: self.homeFeed,
+            chips: self.homeChips,
+            shelves: self.homeShelves
+        )
+    }
+
     func getHomeFeedContinuation() async throws -> YouTubeFeed? {
         if let error { throw error }
         if !self.homeContinuationPages.isEmpty {
@@ -197,8 +210,16 @@ final class MockYouTubeClient: YouTubeClientProtocol {
         return self.subscribedChannels
     }
 
+    /// Awaited inside `getHistory` before it returns, so a test can hold the
+    /// Continue Watching (history) request open and verify topic rails publish
+    /// without waiting for it.
+    var beforeHistoryReturn: (@Sendable () async -> Void)?
+
     func getHistory() async throws -> YouTubeFeed {
         if let error { throw error }
+        if let beforeHistoryReturn {
+            await beforeHistoryReturn()
+        }
         return self.historyFeed
     }
 
